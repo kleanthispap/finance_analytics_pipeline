@@ -1,0 +1,9 @@
+.env
+tokens.json
+__pycache__/
+*.pyc
+.venv/
+*.log
+credentials/
+.vscode/
+.ipynb_checkpoints/
