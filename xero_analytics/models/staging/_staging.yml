@@ -1,0 +1,128 @@
+version: 2
+
+models:
+  - name: stg_invoices
+    description: >
+      Invoice headers parsed from raw JSON. Excludes VOIDED and DELETED
+      (11 of 68 source records) as cancelled transactions; DRAFT is retained
+      with its status flag as a pending transaction. 57 rows.
+    columns:
+      - name: invoice_id
+        description: Primary key.
+        tests: [unique, not_null]
+      - name: contact_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_contacts')
+                field: contact_id
+      - name: invoice_type
+        description: ACCREC (sales invoice) or ACCPAY (supplier bill).
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['ACCREC', 'ACCPAY']
+      - name: invoice_status
+        description: VOIDED and DELETED must never appear post-filter.
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['AUTHORISED', 'PAID', 'DRAFT']
+      - name: line_amount_types
+        description: >
+          Determines whether line amounts include tax. Drives the
+          normalisation in stg_invoice_lines.
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['Exclusive', 'Inclusive']
+      - name: invoice_date
+        tests: [not_null]
+
+  - name: stg_invoice_lines
+    description: >
+      Invoice line items with tax normalised to consistent net and gross
+      measures. Grain: one row per line item on a retained invoice. 66 rows.
+    columns:
+      - name: invoice_line_id
+        description: Primary key.
+        tests: [unique, not_null]
+      - name: invoice_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_invoices')
+                field: invoice_id
+      - name: account_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_accounts')
+                field: account_id
+      - name: line_amount_net
+        description: >
+          Tax-exclusive. Normalised from LineAmount according to the invoice
+          tax basis; reconciles to invoice subtotal for both bases.
+        tests: [not_null]
+      - name: line_amount_gross
+        description: Tax-inclusive counterpart of line_amount_net.
+        tests: [not_null]
+
+  - name: stg_payments
+    description: >
+      Authorised payments. Excludes 17 soft-deleted records that would
+      otherwise double cash received on 16 invoices. 34 rows.
+    columns:
+      - name: payment_id
+        description: Primary key.
+        tests: [unique, not_null]
+      - name: invoice_id
+        description: >
+          Unique - payment to invoice is 1:1 once deleted records are removed.
+          This test fails if the status filter regresses.
+        tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_invoices')
+                field: invoice_id
+      - name: payment_status
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['AUTHORISED']
+
+  - name: stg_contacts
+    description: >
+      Customer and supplier contacts. No status filter required - all 50 are
+      ACTIVE. API-computed Balances fields are deliberately excluded; balances
+      are derived in the mart layer from invoices and payments.
+    columns:
+      - name: contact_id
+        description: Primary key.
+        tests: [unique, not_null]
+      - name: contact_name
+        description: >
+          Not unique - 49 distinct values across 50 rows. Never join or group
+          on this; use contact_id.
+        tests: [not_null]
+
+  - name: stg_accounts
+    description: >
+      Chart of accounts. All 58 are ACTIVE; no filter required. Only 17 are
+      referenced by any invoice line, so most rows carry no facts.
+    columns:
+      - name: account_id
+        description: Primary key.
+        tests: [unique, not_null]
+      - name: account_class
+        description: >
+          Primary categorisation attribute for spend and revenue analysis.
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['EXPENSE', 'LIABILITY', 'ASSET', 'REVENUE', 'EQUITY']

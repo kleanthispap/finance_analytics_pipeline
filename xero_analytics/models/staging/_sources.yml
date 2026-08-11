@@ -1,0 +1,19 @@
+version: 2
+
+sources:
+  - name: xero_raw
+    database: xero-finance-analytics-kp
+    schema: xero_raw
+    description: >
+      Raw Xero API payloads landed as native JSON, one row per API record.
+      Loaded by src/ingest.py with WRITE_TRUNCATE. No filtering or parsing
+      is applied at ingestion — all transformation happens downstream.
+    tables:
+      - name: raw_invoices
+      - name: raw_invoice_details
+      - name: raw_contacts
+      - name: raw_accounts
+      - name: raw_payments
+      - name: raw_bank_transactions
+      - name: raw_credit_notes
+      - name: raw_items
