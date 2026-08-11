@@ -1,0 +1,94 @@
+version: 2
+
+models:
+  - name: fact_invoice_lines
+    description: >
+      Invoice line fact. Grain: one row per line item on a retained invoice.
+      66 rows. Filter on invoice_type in every measure - ACCREC and ACCPAY
+      are economically opposite.
+    columns:
+      - name: invoice_line_key
+        description: Primary key.
+        tests: [unique, not_null]
+      - name: contact_key
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_contact')
+                field: contact_key
+      - name: account_key
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_account')
+                field: account_key
+      - name: date_key
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+      - name: line_amount_net
+        tests: [not_null]
+
+  - name: fact_payments
+    description: >
+      Payment fact. Grain: one row per authorised payment. 34 rows.
+      1:1 with invoice after the soft-delete filter applied in staging.
+    columns:
+      - name: payment_key
+        description: Primary key.
+        tests: [unique, not_null]
+      - name: invoice_id
+        description: >
+          Unique - enforces the 1:1 that only holds once soft-deleted
+          payments are excluded. Fails if that filter regresses.
+        tests: [unique, not_null]
+      - name: contact_key
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_contact')
+                field: contact_key
+      - name: date_key
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+      - name: amount
+        tests: [not_null]
+
+  - name: dim_contact
+    description: >
+      Contact dimension. 50 rows, of which 29 have transactions
+      (is_transacting).
+    columns:
+      - name: contact_key
+        tests: [unique, not_null]
+
+  - name: dim_account
+    description: >
+      Chart of accounts. 58 rows, of which 17 are referenced by an invoice
+      line (is_transacting).
+    columns:
+      - name: account_key
+        tests: [unique, not_null]
+      - name: account_class
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['EXPENSE', 'LIABILITY', 'ASSET', 'REVENUE', 'EQUITY']
+
+  - name: dim_date
+    description: >
+      Date spine covering the observed transaction range. 214 rows.
+      is_future guards against the demo source's rolling data generation.
+    columns:
+      - name: date_key
+        tests: [unique, not_null]
