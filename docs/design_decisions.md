@@ -216,6 +216,53 @@ modelling layer. Extraction is exercised manually.
 
 ---
 
+## Business marts
+
+### AR aging uses invoice `amount_due`, not summed line amounts
+
+`mart_ar_aging` sources outstanding value from the invoice header rather than
+aggregating `line_amount_net`.
+
+**Why.** `amount_due` already nets off partial payments and credit notes. The
+line facts know nothing about either — a fully-credited invoice would still show
+its full line value. Using the header field means the model agrees with what
+Xero itself reports, which is the correct answer.
+
+### Aging buckets beyond 60 days are retained despite being empty
+
+The demo source has nothing older than 60 days overdue, so buckets 4 and 5 never
+populate.
+
+**Why.** An aging report without a 90+ bucket is not an aging report. The empty
+bucket is itself information — it says nothing is severely overdue. Collapsing
+the scale to fit the data would bake a property of this particular dataset into
+the model's structure.
+
+### The aging model is not reproducible across days
+
+Aging is computed relative to `current_date()`, so re-running it tomorrow gives
+different buckets.
+
+**Why, and the limitation.** That is correct behaviour for an aging report,
+which is inherently as-at-today. But it means the model cannot be used for
+historical comparison — "what did our aging look like last month" is
+unanswerable without a snapshot. A dbt snapshot on the invoice table would
+enable that and is the natural extension.
+
+### DSO retains measures that show nothing on this data
+
+No invoice in the source was paid late, so `paid_late` is `false` throughout and
+`days_vs_terms` is negative for every row.
+
+**Why keep them.** Removing a column because the current data makes it
+uninteresting bakes a dataset property into the model. Payment terms do vary
+(10 to 22 days), so `days_vs_terms` is a genuinely distinct measure rather than
+a constant offset from `days_to_pay` — it would carry real information against
+a live organisation. The limitation is documented in the model description
+rather than hidden by deletion.
+
+---
+
 ## A note on process
 
 Two of the decisions above exist because profiling happened before modelling.

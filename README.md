@@ -26,7 +26,7 @@ BigQuery  xero_raw   8 tables, unmodified JSON payloads + ingestion metadata
 dbt  staging         parse, filter, normalise      (5 views)
         |
         v
-dbt  marts           star schema                   (2 facts, 3 dimensions)
+dbt  marts           star schema + business marts  (2 facts, 3 dims, 2 marts)
         |
         v
 GitHub Actions       dbt build on every push -> separate CI dataset
@@ -57,6 +57,16 @@ fact_payments                      34 rows   grain: one authorised payment
 
 dim_contact    50 rows      dim_account   58 rows      dim_date   214 rows
 ```
+
+Two business marts sit on top:
+
+| Model | Rows | What it answers |
+|---|---|---|
+| `mart_ar_aging` | 9 | Outstanding sales invoices bucketed by days overdue |
+| `mart_dso` | 15 | Days from invoice to payment on settled sales invoices |
+
+On the demo source these show $9,194.51 outstanding across three aging buckets,
+and an average 10.4 days to pay against terms ranging from 10 to 22 days.
 
 `invoice_type` distinguishes `ACCREC` (sales invoices) from `ACCPAY` (supplier
 bills). These are economically opposite and **must** be filtered in any measure —
@@ -103,7 +113,7 @@ normalises both into `line_amount_net` and `line_amount_gross`.
 
 ## Tests
 
-54 tests run on every push: primary key uniqueness, referential integrity across
+67 tests run on every push: primary key uniqueness, referential integrity across
 all fact-to-dimension joins, accepted values on every categorical column, and the
 two reconciliation assertions above.
 
@@ -154,6 +164,7 @@ claim.
 | Constraint | Consequence |
 |---|---|
 | 57 live invoices, 66 line items, 34 payments | No statistically meaningful findings |
+| No invoice in the source was paid late | `paid_late` and `days_vs_terms` in `mart_dso` show nothing — real receivables always have stragglers |
 | Usable window is 3 months (Jun–Aug 2026) | No trend, seasonality or cohort analysis |
 | 11 invoices dated in the future | Time-series measures need the `is_future` guard in `dim_date` |
 | 1.13 line items per invoice | Product and line-mix analysis is near-empty |
