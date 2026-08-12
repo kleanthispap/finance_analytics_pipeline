@@ -64,6 +64,74 @@ models:
       - name: amount
         tests: [not_null]
 
+  - name: mart_ar_aging
+    description: >
+      Outstanding sales invoices bucketed by days overdue, as at the current
+      date. ACCREC only; DRAFT excluded. 9 rows on the demo source.
+
+      Note this model is not reproducible across days - aging is calculated
+      relative to current_date(). A point-in-time version would require a
+      snapshot.
+    columns:
+      - name: invoice_id
+        description: Primary key - one row per outstanding invoice.
+        tests: [unique, not_null]
+      - name: contact_key
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_contact')
+                field: contact_key
+      - name: amount_due
+        description: >
+          Sourced from the invoice header, which already nets off partial
+          payments and credit notes. Summed line amounts do not.
+        tests: [not_null]
+      - name: aging_bucket
+        tests:
+          - accepted_values:
+              arguments:
+                values:
+                  - '1. Not yet due'
+                  - '2. 1-30 days'
+                  - '3. 31-60 days'
+                  - '4. 61-90 days'
+                  - '5. 90+ days'
+
+  - name: mart_dso
+    description: >
+      Days sales outstanding for settled sales invoices. 15 rows on the demo
+      source. Payment terms vary from 10 to 22 days, so days_vs_terms is a
+      distinct measure from days_to_pay rather than a constant offset.
+
+      Note: no invoice in this source was paid late. paid_late and
+      days_vs_terms are retained for correctness, but show nothing on this
+      data - real receivables always have stragglers.
+    columns:
+      - name: invoice_id
+        description: >
+          Primary key. Unique because payment-to-invoice is 1:1 after the
+          soft-delete filter in staging.
+        tests: [unique, not_null]
+      - name: contact_key
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_contact')
+                field: contact_key
+      - name: days_to_pay
+        tests: [not_null]
+      - name: date_key
+        description: Payment date.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+
   - name: dim_contact
     description: >
       Contact dimension. 50 rows, of which 29 have transactions
