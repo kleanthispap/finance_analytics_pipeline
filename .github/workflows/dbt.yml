@@ -1,0 +1,33 @@
+name: dbt build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: xero_analytics
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dbt
+        run: pip install dbt-bigquery==1.12.0
+
+      - name: Write service account key
+        run: echo '${{ secrets.GCP_SA_KEY }}' > "$HOME/gcp-key.json"
+
+      - name: dbt build
+        env:
+          GCP_KEYFILE_PATH: /home/runner/gcp-key.json
+        run: dbt build --target ci --profiles-dir .
