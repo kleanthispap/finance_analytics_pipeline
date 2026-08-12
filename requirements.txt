@@ -1,0 +1,16 @@
+# Extraction
+requests==2.32.3
+python-dotenv==1.0.1
+flask==3.0.3
+
+# Warehouse
+google-cloud-bigquery==3.25.0
+
+# Transformation
+dbt-core==1.12.0
+dbt-bigquery==1.12.0
+
+# Profiling
+pandas==2.2.2
+jupyter==1.0.0
+ipykernel==6.29.5
