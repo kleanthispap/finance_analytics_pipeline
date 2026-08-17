@@ -241,3 +241,20 @@ demonstrate business insight, and the data could not support that claim.
   the profiling that produced the findings above, with the code that proves each one
 - [`docs/design_decisions.md`](docs/design_decisions.md) — why the model is
   shaped the way it is
+
+  
+
+# Out of scope
+
+**Orchestration.** The source is a static demo organisation that regenerates on
+an unpredictable rolling window, so a scheduled refresh would add machinery
+without adding value. Automated validation runs on every commit via GitHub
+Actions instead. Against a live organisation a scheduled DAG would be the
+natural addition — with the ingestion step's dependency on OAuth refresh token
+lifecycle needing explicit handling, since tokens rotate on every use and expire
+after 60 days of inactivity.
+
+**Incremental extraction.** Implemented in principle but not enabled: Xero
+exposes `UpdatedDateUTC`, but the Demo Company returns 2008 dates against 2026
+transactions, so `If-Modified-Since` cannot be validated here. At 68 invoices,
+full refresh costs nothing
