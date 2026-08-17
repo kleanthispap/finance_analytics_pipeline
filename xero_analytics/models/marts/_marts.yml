@@ -160,3 +160,14 @@ models:
     columns:
       - name: date_key
         tests: [unique, not_null]
+
+  - name: dim_aging_bucket
+    description: >
+      All possible aging buckets, including those with no invoices. Ensures
+      empty severe buckets remain visible in reporting rather than being
+      silently dropped.
+    columns:
+      - name: aging_bucket
+        tests: [unique, not_null]
+      - name: sort_order
+        tests: [unique, not_null]
