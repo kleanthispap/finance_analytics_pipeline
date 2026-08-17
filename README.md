@@ -74,6 +74,33 @@ summing across both nets receivables against payables.
 
 ---
 
+## Dashboard
+
+![Finance dashboard](docs/dashboard.png)
+
+A single-page Power BI report over the mart layer, connecting directly to
+BigQuery. The `.pbix` is in [`powerbi/`](powerbi/) if you want to inspect the
+model and DAX.
+
+Four things it shows:
+
+- **Receivables by age** — outstanding invoices bucketed by days overdue. The
+  colour gradient is pinned to the full 1–5 bucket scale rather than the range
+  present in the data, so the severe end stays visually reserved even while
+  empty.
+- **Outstanding by customer** — one customer accounts for 67% of the $9,194.51
+  outstanding, across 11% of the invoices.
+- **Purchase spend by account** — supplier spend by chart-of-accounts category.
+- **Days to payment** — distribution of invoice-to-payment days across settled
+  sales invoices.
+
+Two modelling details are visible here. `dim_aging_bucket` exists so that
+buckets with no invoices still appear: the fact table only contains buckets that
+occurred, and a report driven by the fact alone silently omits 61–90 and 90+ —
+understating what an aging report is for. And every measure filters on
+`invoice_type`, since summing sales invoices and supplier bills together nets
+receivables against payables.
+
 ## Two data traps this pipeline catches
 
 The source data profiling ([notebook](notebooks/01_api_exploration.ipynb)) found
